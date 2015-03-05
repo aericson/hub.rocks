@@ -50,6 +50,7 @@ INSTALLED_APPS = (
     'storages',
     'djangobower',
     'rest_framework',
+    'swampdragon',
 
     'core',
     'tracks',
@@ -250,3 +251,6 @@ LOGGING = {
         }
     }
 }
+
+SWAMP_DRAGON_CONNECTION = ('swampdragon.connections.sockjs_connection.DjangoSubscriberConnection', '/data')
+DRAGON_URL = 'http://localhost:9999/'

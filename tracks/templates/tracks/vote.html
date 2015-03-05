@@ -1,4 +1,5 @@
 {% load compress %}
+{% load static swampdragon_tags %}
 {% load staticfiles %}
 
 <!DOCTYPE html>
@@ -27,6 +28,7 @@
             <th colspan="2">
               <span ng-if="data.now_playing.service_id">
                 <span class="glyphicon glyphicon-play"></span> Tocando agora: {{ data.now_playing.title }} - {{ data.now_playing.artist }}
+                <button class="btn btn-xs btn-danger pull-right" ng-click="voteSkip(data.now_playing.service_id)">skip</button>
               </span>
               <span ng-if="!data.now_playing.service_id">
                 Escolha uma música abaixo:
@@ -36,10 +38,10 @@
           <tr ng-repeat="track in data.tracks">
             <td class="text-center">
               <button class="btn btn-xs"
-                      ng-if="track.votes.indexOf(data.my_uuid) === -1"
+                      ng-if="track.voters.indexOf(data.my_uuid) === -1"
                       ng-click="insertVote(track.service_id)"><span class="glyphicon glyphicon-thumbs-up"></span></button>
               <button class="btn btn-xs"
-                      ng-if="track.votes.indexOf(data.my_uuid) !== -1"
+                      ng-if="track.voters.indexOf(data.my_uuid) !== -1"
                       ng-click="deleteVote(track.service_id)"><span class="glyphicon glyphicon-remove"></span></button>
             </td>
             <td>{{ track.title }} - {{ track.artist }}</td>
@@ -62,6 +64,9 @@
     </div>
     {% endverbatim %}
 
+
+
+    {% swampdragon_settings %}
     {% compress js %}
     <script type="text/javascript" src="{% static 'jquery/dist/jquery.js' %}"></script>
     <script type="text/javascript" src="{% static 'angular/angular.js' %}"></script>
@@ -72,6 +77,10 @@
     <script type="text/javascript" src="{% static 'selectize-enter-key-submit/src/plugin.js' %}"></script>
     <script type="text/javascript" src="{% static 'pusher/dist/pusher.js' %}"></script>
     <script type="text/javascript" src="{% static 'pusher-angular/lib/pusher-angular.js' %}"></script>
+
+    <script type="text/javascript" src="{% static 'swampdragon/js/dist/swampdragon.min.js' %}"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}swampdragon/js/dist/datamapper.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}swampdragon/js/angular/services.js"></script>
 
     <script>
       var app = angular.module('hubrocks.const', []);

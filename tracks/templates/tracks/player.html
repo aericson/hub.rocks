@@ -1,3 +1,4 @@
+{% load static swampdragon_tags %}
 {% load staticfiles %}
 
 <!DOCTYPE html>
@@ -7,6 +8,8 @@
 
     <title>hub.rocks player</title>
 
+    {% swampdragon_settings %}
+    <script type="text/javascript" src="{% static 'swampdragon/js/dist/swampdragon.min.js' %}"></script>
     <script src="{% static 'jquery/dist/jquery.js' %}"></script>
     <script src="http://cdn-files.deezer.com/js/min/dz-v00202681.js"></script>
 

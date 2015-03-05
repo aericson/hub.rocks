@@ -3,10 +3,14 @@ from django.db.models import Count
 from django.utils.translation import ugettext_lazy as _
 
 from model_utils.models import TimeStampedModel
+from swampdragon.models import SelfPublishModel
 import requests
 
+from tracks.swamp_serializers import TrackSwampSerializer, VoteSwampSerializer
 
-class Track(TimeStampedModel):
+
+class Track(SelfPublishModel, TimeStampedModel):
+    serializer_class = TrackSwampSerializer
     service_id = models.CharField(max_length=255, primary_key=True)
     title = models.CharField(max_length=255)
     artist = models.CharField(max_length=255)
@@ -49,7 +53,8 @@ class Track(TimeStampedModel):
             raise ValueError("Deezer response != 200")
 
 
-class Vote(TimeStampedModel):
+class Vote(SelfPublishModel, TimeStampedModel):
+    serializer_class = VoteSwampSerializer
     track = models.ForeignKey(Track, related_name='votes')
     token = models.CharField(max_length=255)
 

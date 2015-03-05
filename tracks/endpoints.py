@@ -123,8 +123,8 @@ class NowPlayingAPIView(PusherMixin, generics.RetrieveUpdateDestroyAPIView):
 class NextTrackAPIView(generics.RetrieveAPIView):
 
     def retrieve(self, request, *args, **kwargs):
-        qs = Track.ordered_qs()    
-        
+        qs = Track.ordered_qs()
+
         if qs.exists():
             data = TrackSerializer(qs[0]).data
         else:
@@ -144,7 +144,6 @@ class NextTrackAPIView(generics.RetrieveAPIView):
                     # disappeared between the two queries we try selecting the
                     # first one.
                     try:
-                        print "trying again", track.title
                         track = Track.objects.filter(now_playing=False,
                                                      on_queue=False).annotate(
                                                      votes_count=Count('votes')
