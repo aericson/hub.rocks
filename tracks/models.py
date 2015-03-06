@@ -11,7 +11,7 @@ from tracks.swamp_serializers import TrackSwampSerializer, VoteSwampSerializer
 
 class Track(SelfPublishModel, TimeStampedModel):
     serializer_class = TrackSwampSerializer
-    service_id = models.CharField(max_length=255, primary_key=True)
+    service_id = models.CharField(max_length=255, unique=True)
     title = models.CharField(max_length=255)
     artist = models.CharField(max_length=255)
     now_playing = models.BooleanField(default=False)
