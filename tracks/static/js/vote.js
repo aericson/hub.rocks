@@ -1,6 +1,6 @@
 (function () {
   var app = angular.module('hubrocks', [
-    'LocalStorageModule', 'uuid4', 'pusher-angular', 'SwampDragonServices' ,'hubrocks.const']);
+    'LocalStorageModule', 'uuid4', 'SwampDragonServices' ,'hubrocks.const']);
 
   app.factory('my_uuid', ['localStorageService', 'uuid4',
     function (localStorageService, uuid4) {
@@ -14,8 +14,8 @@
     }
   ]);
 
-  app.factory('HubrocksAPI', ['API_URL', 'PUSHER_API_KEY', 'my_uuid', '$http', '$pusher',
-    function (API_URL, PUSHER_API_KEY, my_uuid, $http, $pusher) {
+  app.factory('HubrocksAPI', ['API_URL', 'my_uuid', '$http',
+    function (API_URL, my_uuid, $http) {
       $http.defaults.headers.common.Authorization = 'Token ' + my_uuid;
       var data = {
         'my_uuid': my_uuid
@@ -45,54 +45,42 @@
       $scope.channel = 'tracks';
 
 
-      var get_voters = function(votes) {
-        var voters = [];
-        for (var i=0; i< votes.length; i++) {
-          voters.push(votes[i].token);
-        }
-        return voters;
+      var get_tracks = function (response) {
+        $scope.data.tracks = response.data;
+      };
+
+      var get_now_playing = function (response) {
+        $scope.data.now_playing = response.data;
       };
 
       $dragon.onReady(function() {
-        $dragon.subscribe('track', $scope.channel, {}).then(function(response) {
-            $scope.dataMapper = new DataMapper(response.data);
+        $dragon.subscribe('track', $scope.channel).then(function(response) {
+          $scope.tracksDataMapper = new DataMapper(response.data);
         });
 
-        $dragon.getSingle('track', {now_playing: true}).then(function(response) {
-            $scope.data.now_playing = response.data;
-            if ($scope.data.now_playing)
-              $scope.data.now_playing.voters = get_voters($scope.data.now_playing.votes);
-        });
+        $dragon.getSingle('track', {now_playing: true}).then(get_now_playing);
 
-        $dragon.getList('track', {}).then(function(response) {
-            $scope.data.tracks = response.data;
-            for (var i=0; i < $scope.data.tracks.length; i++)
-              $scope.data.tracks[i].voters = get_voters($scope.data.tracks[i].votes);
-        });
+        $dragon.getList('track').then(get_tracks);
       });
 
       $dragon.onChannelMessage(function(channels, message) {
-          if (indexOf.call(channels, $scope.channel) > -1) {
-              $scope.$apply(function() {
-                  debugger;
-                  $scope.dataMapper.mapData($scope.data.tracks, message);
-                  // get now playing
-                  $scope.data.now_playing = null;
-                  for (var i=0; i < $scope.data.tracks.length; i++) {
-                    $scope.data.tracks[i].voters = get_voters($scope.data.tracks[i].votes);
-                    if ($scope.data.tracks[i].now_playing) {
-                      $scope.data.now_playing = $scope.data.tracks[i];
-                    }
-                  }
-              });
-          }
+        if (indexOf.call(channels, $scope.channel) > -1) {
+          $scope.$apply(function() {
+            if (message.data._type === 'track' && message.action === 'updated' &&
+                message.data.now_playing) {
+              // set now playing
+              $dragon.getSingle('track', {now_playing: true}).then(get_now_playing);
+              // update list
+              $dragon.getList('track').then(get_tracks);
+            }
+            else if (message.data._type === 'vote' || message.action === 'updated') {
+              $dragon.getList('track').then(get_tracks);
+            } else {
+              $scope.tracksDataMapper.mapData($scope.data.tracks, message);
+            }
+          });
+        }
       });
-
-      $scope.itemDone = function(item) {
-            debuggr;
-          item.done = true != item.done;
-          $dragon.update('track', item);
-      };
 
       $scope.insertTrack = function () {
         if ($scope.newTrack) {

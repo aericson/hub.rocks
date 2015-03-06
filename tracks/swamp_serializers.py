@@ -16,5 +16,8 @@ class TrackSwampSerializer(ModelSerializer):
     class Meta:
         model = 'tracks.Track'
         publish_fields = ('service_id', 'now_playing', 'title', 'artist',
-                          'votes')
+                          'votes', 'voters')
         update_fields = ('now_playing', )
+
+    def serialize_voters(self, obj):
+        return list(obj.votes.values_list('token', flat=True))

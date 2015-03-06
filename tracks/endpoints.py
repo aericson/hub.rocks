@@ -12,7 +12,6 @@ from tracks.serializers import (
     TrackSerializer, VoteSerializer,
     TrackUpdateSerializer)
 from tracks.models import Track, Vote
-from core.mixins import PusherMixin
 
 
 class TrackListAPIView(generics.ListAPIView):
@@ -37,10 +36,8 @@ class TrackListAPIView(generics.ListAPIView):
         return response
 
 
-class VoteAPIView(PusherMixin, mixins.DestroyModelMixin, generics.CreateAPIView):
+class VoteAPIView(mixins.DestroyModelMixin, generics.CreateAPIView):
     serializer_class = VoteSerializer
-    pusher_channel = 'tracks'
-    pusher_event = 'updated'
 
     def get_token(self):
         auth_header = self.request.META.get('HTTP_AUTHORIZATION', '')
@@ -56,7 +53,9 @@ class VoteAPIView(PusherMixin, mixins.DestroyModelMixin, generics.CreateAPIView)
     def get_serializer(self, *args, **kwargs):
         kwargs['data'] = {}
         kwargs['data']['token'] = self.get_token()
-        kwargs['data']['track'] = self.kwargs['service_id']
+        # when it gets here track was already created if needed
+        kwargs['data']['track'] = Track.objects.get(
+                                    service_id=self.kwargs['service_id']).pk
         
         return super(VoteAPIView,
             self).get_serializer(*args, **kwargs)
@@ -64,23 +63,22 @@ class VoteAPIView(PusherMixin, mixins.DestroyModelMixin, generics.CreateAPIView)
     def create(self, request, *args, **kwargs):
         service_id = self.kwargs['service_id']
 
-        if not Track.objects.filter(
-            service_id=service_id).exists():
-            try:
-                Track.fetch_and_save_track(service_id)
-            except RequestException:
-                return Response(
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            except ValueError:
-                return Response(
-                    status=status.HTTP_400_BAD_REQUEST)
+        try:
+            Track.fetch_and_save_track(service_id)
+            print "created"
+        except RequestException:
+            return Response(
+                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except ValueError:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST)
 
         return super(VoteAPIView,
             self).create(request, *args, **kwargs)
 
     def get_object(self, *args, **kwargs):
         return get_object_or_404(Vote,
-            track=self.kwargs['service_id'],
+            track__service_id=self.kwargs['service_id'],
             token=self.get_token())
 
     def perform_destroy(self, instance):
@@ -96,10 +94,8 @@ class VoteAPIView(PusherMixin, mixins.DestroyModelMixin, generics.CreateAPIView)
         return self.destroy(request, *args, **kwargs)
 
 
-class NowPlayingAPIView(PusherMixin, generics.RetrieveUpdateDestroyAPIView):
+class NowPlayingAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TrackUpdateSerializer
-    pusher_channel = 'tracks'
-    pusher_event = 'updated'
 
     def get_object(self, *args, **kwargs):
         if self.request.method == 'PUT':

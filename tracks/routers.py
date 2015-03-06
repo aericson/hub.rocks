@@ -25,7 +25,7 @@ class TrackRouter(ModelRouter):
             return None
 
     def get_query_set(self, **kwargs):
-        return self.model.objects.filter(on_queue=True, now_playing=False)
+        return self.model.ordered_qs()
 
 
 route_handler.register(TrackRouter)
