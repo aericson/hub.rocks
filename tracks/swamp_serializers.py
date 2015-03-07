@@ -21,3 +21,8 @@ class TrackSwampSerializer(ModelSerializer):
 
     def serialize_voters(self, obj):
         return list(obj.votes.values_list('token', flat=True))
+
+    def serialize(self, fields=None, ignore_serializers=None):
+        # when a track gets updated to now_playing we want all the fields
+        # of the serializer so we can replace the last now_playing.
+        return super(TrackSwampSerializer, self).serialize()

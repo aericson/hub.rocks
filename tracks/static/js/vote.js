@@ -58,6 +58,10 @@
           $scope.tracksDataMapper = new DataMapper(response.data);
         });
 
+        $dragon.subscribe('track', 'playing-now', {now_playing: true}).then(function(response) {
+          $scope.nowPlayingDataMapper = new DataMapper(response.data);
+        });
+
         $dragon.getSingle('track', {now_playing: true}).then(get_now_playing);
 
         $dragon.getList('track').then(get_tracks);
@@ -66,18 +70,17 @@
       $dragon.onChannelMessage(function(channels, message) {
         if (indexOf.call(channels, $scope.channel) > -1) {
           $scope.$apply(function() {
-            if (message.data._type === 'track' && message.action === 'updated' &&
-                message.data.now_playing) {
-              // set now playing
-              $dragon.getSingle('track', {now_playing: true}).then(get_now_playing);
-              // update list
-              $dragon.getList('track').then(get_tracks);
-            }
-            else if (message.data._type === 'vote' || message.action === 'updated') {
+            if (message.data._type === 'vote' || message.action === 'updated') {
+              // a vote changes the whole list (order, deletion)
               $dragon.getList('track').then(get_tracks);
             } else {
               $scope.tracksDataMapper.mapData($scope.data.tracks, message);
             }
+          });
+        } else if (indexOf.call(channels, 'playing-now') > -1) {
+          $scope.$apply(function() {
+            $scope.data.now_playing = $scope.nowPlayingDataMapper.mapUpdated($scope.data.now_playing,
+                                                                             message.data);
           });
         }
       });

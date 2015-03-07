@@ -1,6 +1,4 @@
 
-from django.db.models import Q
-
 from swampdragon import route_handler
 from swampdragon.route_handler import ModelRouter
 
