@@ -23,7 +23,6 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(max_length=255)),
                 ('artist', models.CharField(max_length=255)),
                 ('now_playing', models.BooleanField(default=False)),
-                ('on_queue', models.BooleanField(default=True)),
             ],
             options={
                 'verbose_name': 'Track',

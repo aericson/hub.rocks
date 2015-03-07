@@ -15,7 +15,6 @@ class Track(SelfPublishModel, TimeStampedModel):
     title = models.CharField(max_length=255)
     artist = models.CharField(max_length=255)
     now_playing = models.BooleanField(default=False)
-    on_queue = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = _("Track")
@@ -29,7 +28,7 @@ class Track(SelfPublishModel, TimeStampedModel):
     @classmethod
     def ordered_qs(cls):
         return (Track.objects.
-            filter(now_playing=False, on_queue=True).
+            filter(now_playing=False, votes__isnull=False).
             annotate(votes_count=Count('votes')).
             order_by('-votes_count', 'modified'))
 
@@ -41,12 +40,10 @@ class Track(SelfPublishModel, TimeStampedModel):
         if response.status_code == 200:
             response_json = response.json()
             if 'error' not in response_json:
-                track, __  = Track.objects.update_or_create(
-                    defaults={'on_queue': True},
+                return Track.objects.create(
                     service_id=service_id,
                     title=response_json['title'],
                     artist=response_json['artist']['name'])
-                return track
             else:
                 raise ValueError("Deezer error")
         else:
