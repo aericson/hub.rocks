@@ -18,10 +18,7 @@ class TrackSwampSerializer(ModelSerializer):
                           'votes', 'voters', 'skippers', 'left_to_skip')
 
     def serialize_voters(self, obj):
-        try:
-            return list(obj.votes.values_list('token', flat=True))
-        except AttributeError:
-            return []
+        return list(obj.votes.values_list('token', flat=True))
 
     def serialize(self, fields=None, ignore_serializers=None):
         # when a track gets updated to now_playing we want all the fields
@@ -33,8 +30,5 @@ class TrackSwampSerializer(ModelSerializer):
         return serialize
 
     def serialize_skippers(self, obj):
-        try:
-            return [vote.skip_request_by for vote in
-                    obj.votes.exclude(skip_request_by='')]
-        except AttributeError:
-            return []
+        return [vote.skip_request_by for vote in
+                obj.votes.exclude(skip_request_by='')]

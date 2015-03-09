@@ -9,3 +9,10 @@ class GetTokenMixin(object):
         else:
             token = None
         return token
+
+
+class StopPlayingMixin(object):
+    def stop_track(self, track):
+        track.votes.all().delete()
+        track.now_playing = False
+        track.save()

@@ -11,10 +11,11 @@ from tracks.serializers import (
     TrackSerializer, VoteSerializer,
     TrackUpdateSerializer)
 from tracks.models import Track, Vote
-from tracks.mixins import GetTokenMixin
+from tracks.mixins import GetTokenMixin, StopPlayingMixin
 
 
-class SkipNowPlaying(GetTokenMixin, generics.GenericAPIView):
+class SkipNowPlaying(StopPlayingMixin, GetTokenMixin,
+                     generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         track = get_object_or_404(Track, now_playing=True)
@@ -31,9 +32,7 @@ class SkipNowPlaying(GetTokenMixin, generics.GenericAPIView):
                 vote.save()
             else:
                 # no vote left to cancel, that must be a bad song, skip it!
-                track.votes.all().delete()
-                track.now_playing = False
-                track.save()
+                self.stop_track(track)
             return Response(status=status.HTTP_200_OK)
         return Response(status=status.HTTP_403_FORBIDDEN)
 
@@ -60,7 +59,8 @@ class TrackListAPIView(generics.ListAPIView):
         return response
 
 
-class VoteAPIView(GetTokenMixin, mixins.DestroyModelMixin, generics.CreateAPIView):
+class VoteAPIView(GetTokenMixin, mixins.DestroyModelMixin,
+                  generics.CreateAPIView):
     serializer_class = VoteSerializer
 
     def get_serializer(self, *args, **kwargs):
@@ -94,14 +94,12 @@ class VoteAPIView(GetTokenMixin, mixins.DestroyModelMixin, generics.CreateAPIVie
             track__service_id=self.kwargs['service_id'],
             token=self.get_token())
 
-    def perform_destroy(self, instance):
-        super(VoteAPIView, self).perform_destroy(instance)
-
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
 
 
-class NowPlayingAPIView(generics.RetrieveUpdateDestroyAPIView):
+class NowPlayingAPIView(StopPlayingMixin,
+                        generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TrackUpdateSerializer
 
     def get_object(self, *args, **kwargs):
@@ -117,39 +115,30 @@ class NowPlayingAPIView(generics.RetrieveUpdateDestroyAPIView):
             return get_object_or_404(Track, now_playing=True)
 
     def perform_destroy(self, instance):
-        instance.now_playing = False
-        instance.save()
-        Vote.objects.filter(track=instance).delete()
+        self.stop_track(instance)
 
 
 class NextTrackAPIView(generics.RetrieveAPIView):
 
     def retrieve(self, request, *args, **kwargs):
-        qs = Track.ordered_qs()
+        track = Track.ordered_qs().first()
 
-        if qs.exists():
-            data = TrackSerializer(qs[0]).data
-        else:
+        if not track:
             # select a track at random
-            last = Track.objects.filter(now_playing=False,
-                                        votes__isnull=True).count() - 1
+            last = Track.objects.filter(now_playing=False).count() - 1
             if last >= 0:
                 index = randint(0, last)
                 try:
-                    track = Track.objects.filter(now_playing=False,
-                                                 votes__isnull=True)[index]
-                    data = TrackSerializer(track).data
+                    track = Track.objects.filter(now_playing=False)[index]
                 except IndexError:
                     # on the very unlikely event of selecting an index that
                     # disappeared between the two queries we try selecting the
                     # first one.
-                    try:
-                        track = Track.objects.filter(now_playing=False,
-                                                     votes__isnull=True)[0]
-                        data = TrackSerializer(track).data
-                    except IndexError:
-                        data = None
-            else:
-                data = None
+                    track = Track.objects.filter(now_playing=False).first()
+
+        if track:
+            data = TrackSerializer(track).data
+        else:
+            data = None
 
         return Response({'next': data})
