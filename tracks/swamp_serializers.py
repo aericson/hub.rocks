@@ -6,7 +6,6 @@ class VoteSwampSerializer(ModelSerializer):
 
     class Meta:
         model = 'tracks.Vote'
-        fields = ('track', 'token',)
         publish_fields = ('track', 'token')
 
 
@@ -16,13 +15,26 @@ class TrackSwampSerializer(ModelSerializer):
     class Meta:
         model = 'tracks.Track'
         publish_fields = ('service_id', 'now_playing', 'title', 'artist',
-                          'votes', 'voters')
-        update_fields = ('now_playing', )
+                          'votes', 'voters', 'skippers', 'left_to_skip')
 
     def serialize_voters(self, obj):
-        return list(obj.votes.values_list('token', flat=True))
+        try:
+            return list(obj.votes.values_list('token', flat=True))
+        except AttributeError:
+            return []
 
     def serialize(self, fields=None, ignore_serializers=None):
         # when a track gets updated to now_playing we want all the fields
         # of the serializer so we can replace the last now_playing.
-        return super(TrackSwampSerializer, self).serialize()
+        serialize = super(TrackSwampSerializer, self).serialize()
+        if serialize:
+            serialize['left_to_skip'] = (len(serialize['votes']) + 1 -
+                                         len(serialize['skippers']))
+        return serialize
+
+    def serialize_skippers(self, obj):
+        try:
+            return [vote.skip_request_by for vote in
+                    obj.votes.exclude(skip_request_by='')]
+        except AttributeError:
+            return []

@@ -71,6 +71,24 @@
     return HubrocksAPI.deleteNowPlaying(track_id);
   };
 
+  swampdragon.ready(function () {
+    swampdragon.onChannelMessage(function (channels, message) {
+      if (channels.indexOf('skip') > -1) {
+        if (message.action === 'updated' && message.data._type === 'track' && message.data.now_playing === false) {
+          var track = DZ.player.getCurrentTrack();
+          if (track.id === message.data.service_id) {
+            popNextAndPlay();
+          }
+        }
+      }
+    });
+  });
+
+  swampdragon.open(function () {
+    swampdragon.subscribe('track', 'skip');
+  });
+
+
   DZ.init({
       appId  : '8',
       channelUrl : 'http://developers.deezer.com/examples/channel.php',
@@ -86,9 +104,7 @@
             DZ.Event.subscribe('track_end', function (currentIndex) {
               var track = DZ.player.getCurrentTrack();
               
-              deleteNowPlaying(track.id).done(function () {
-                popNextAndPlay();
-              })
+              deleteNowPlaying(track.id);
             });
           }
       }

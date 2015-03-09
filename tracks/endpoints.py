@@ -2,7 +2,6 @@
 from random import randint
 
 from django.shortcuts import get_object_or_404
-from django.db.models import Count
 
 from rest_framework import generics, mixins, status
 from rest_framework.response import Response
@@ -12,6 +11,31 @@ from tracks.serializers import (
     TrackSerializer, VoteSerializer,
     TrackUpdateSerializer)
 from tracks.models import Track, Vote
+from tracks.mixins import GetTokenMixin
+
+
+class SkipNowPlaying(GetTokenMixin, generics.GenericAPIView):
+
+    def post(self, request, *args, **kwargs):
+        track = get_object_or_404(Track, now_playing=True)
+        token = self.get_token()
+
+        if token and not Track.objects.filter(id=track.id,
+                                              votes__skip_request_by=token,
+                                              now_playing=True
+                                              ).exists():
+            # cancel a vote
+            vote = Vote.objects.filter(track=track, skip_request_by='').first()
+            if vote:
+                vote.skip_request_by = token
+                vote.save()
+            else:
+                # no vote left to cancel, that must be a bad song, skip it!
+                track.votes.all().delete()
+                track.now_playing = False
+                track.save()
+            return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
 
 class TrackListAPIView(generics.ListAPIView):
@@ -23,7 +47,7 @@ class TrackListAPIView(generics.ListAPIView):
     def get(self, request, *args, **kwargs):
         response = super(TrackListAPIView,
             self).get(request, *args, **kwargs)
-        
+
         response_data = response.data
         response.data = {}
         response.data['tracks'] = response_data
@@ -36,19 +60,8 @@ class TrackListAPIView(generics.ListAPIView):
         return response
 
 
-class VoteAPIView(mixins.DestroyModelMixin, generics.CreateAPIView):
+class VoteAPIView(GetTokenMixin, mixins.DestroyModelMixin, generics.CreateAPIView):
     serializer_class = VoteSerializer
-
-    def get_token(self):
-        auth_header = self.request.META.get('HTTP_AUTHORIZATION', '')
-        splitted_auth_header = auth_header.split(' ')
-        
-        if len(splitted_auth_header):
-            __, token = splitted_auth_header
-        else:
-            token = None
-        
-        return token
 
     def get_serializer(self, *args, **kwargs):
         kwargs['data'] = {}
@@ -56,7 +69,7 @@ class VoteAPIView(mixins.DestroyModelMixin, generics.CreateAPIView):
         # when it gets here track was already created if needed
         kwargs['data']['track'] = Track.objects.get(
                                     service_id=self.kwargs['service_id']).pk
-        
+
         return super(VoteAPIView,
             self).get_serializer(*args, **kwargs)
 
