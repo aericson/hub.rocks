@@ -1,6 +1,7 @@
 (function () {
   var HubrocksAPI = (function () {
     var getNext = function () {
+      console.log("getNext");
       return $.ajax({
         url: API_URL + '/tracks/next/',
         type: 'GET'
@@ -8,6 +9,7 @@
     };
 
     var getNowPlaying = function () {
+      console.log("getNowPlaying");
       return $.ajax({
         url: API_URL + '/tracks/now-playing/',
         type: 'GET'
@@ -15,6 +17,7 @@
     };
 
     var setNowPlaying = function (service_id) {
+      console.log("setNowPlaying");
       return $.ajax({
         url: API_URL + '/tracks/now-playing/',
         type: 'PUT',
@@ -26,6 +29,7 @@
     };
 
     var deleteNowPlaying = function (service_id) {
+      console.log("deleteNowPlaying");
       return $.ajax({
         url: API_URL + '/tracks/now-playing/',
         type: 'DELETE'
@@ -41,6 +45,7 @@
   }());
 
   var popNextAndPlay = function () {
+    console.log("popNextAndPlay");
     HubrocksAPI.getNext().done(function (json) {
       if (json.next) {
         HubrocksAPI.setNowPlaying(json.next.service_id);
@@ -60,6 +65,7 @@
   };
 
   var tryToContinuePlaying = function () {
+    console.log("tryToContinuePlaying");
     HubrocksAPI.getNowPlaying().done(function (now_playing) {
       DZ.player.playTracks([now_playing.service_id]);
     }).fail(function () {
@@ -68,10 +74,12 @@
   };
 
   var deleteNowPlaying = function (track_id) {
+    console.log("deleteNowPlaying");
     return HubrocksAPI.deleteNowPlaying(track_id);
   };
 
   swampdragon.ready(function () {
+    console.log("swampdragon.ready");
     swampdragon.onChannelMessage(function (channels, message) {
       if (channels.indexOf('skip') > -1) {
         if (message.action === 'updated' && message.data._type === 'track' && message.data.now_playing === false) {
@@ -86,6 +94,7 @@
 
   swampdragon.open(function () {
     swampdragon.subscribe('track', 'skip');
+    console.log("subscribing");
   });
 
 
@@ -99,6 +108,7 @@
           width : 650,
           height : 300,
           onload : function () {
+            console.log("dzinit");
             tryToContinuePlaying();
 
             DZ.Event.subscribe('track_end', function (currentIndex) {

@@ -249,4 +249,4 @@ LOGGING = {
 }
 
 SWAMP_DRAGON_CONNECTION = ('swampdragon.connections.sockjs_connection.DjangoSubscriberConnection', '/data')
-DRAGON_URL = 'http://localhost:9999/'
+DRAGON_URL = config('DRAGON_URL', default='http://localhost:9999')

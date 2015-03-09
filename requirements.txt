@@ -19,4 +19,4 @@ pytz==2014.10
 requests==2.5.1
 six==1.9.0
 SwampDragon==0.4.1.0
-git+https://github.com/vintasoftware/django-naomi.git@fix-webbrowser-open
+https://github.com/vintasoftware/django-naomi/archive/fix-webbrowser-open.zip
