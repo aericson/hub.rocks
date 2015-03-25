@@ -1,6 +1,4 @@
 
-from random import randint
-
 from django.shortcuts import get_object_or_404
 
 from rest_framework import generics, mixins, status
@@ -11,20 +9,17 @@ from tracks.serializers import (
     TrackSerializer, VoteSerializer,
     TrackUpdateSerializer)
 from tracks.models import Track, Vote
-from tracks.mixins import GetTokenMixin, StopPlayingMixin
+from tracks.mixins import GetTokenMixin, SkipTrackMixin
 
 
-class SkipNowPlaying(StopPlayingMixin, GetTokenMixin,
-                     generics.GenericAPIView):
+class VoteSkipNowPlaying(GetTokenMixin, SkipTrackMixin,
+                         generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
-        track = get_object_or_404(Track, now_playing=True)
         token = self.get_token()
+        track = get_object_or_404(Track, now_playing=True)
 
-        if token and not Track.objects.filter(id=track.id,
-                                              votes__skip_request_by=token,
-                                              now_playing=True
-                                              ).exists():
+        if token and not track.votes.filter(skip_request_by=token).exists():
             # cancel a vote
             vote = Vote.objects.filter(track=track, skip_request_by='').first()
             if vote:
@@ -98,47 +93,20 @@ class VoteAPIView(GetTokenMixin, mixins.DestroyModelMixin,
         return self.destroy(request, *args, **kwargs)
 
 
-class NowPlayingAPIView(StopPlayingMixin,
-                        generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = TrackUpdateSerializer
+class NowPlayingAPIView(SkipTrackMixin, generics.RetrieveDestroyAPIView):
+    serializer_class = TrackSerializer
 
     def get_object(self, *args, **kwargs):
-        if self.request.method == 'PUT':
-            if ('service_id' in self.request.DATA and
-                not Track.objects.filter(now_playing=True).exists()):
-                return get_object_or_404(Track,
-                    service_id=self.request.DATA['service_id'])
-            else:
-                return Response(
-                    status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return get_object_or_404(Track, now_playing=True)
+        return get_object_or_404(Track, now_playing=True)
 
     def perform_destroy(self, instance):
         self.stop_track(instance)
 
 
-class NextTrackAPIView(generics.RetrieveAPIView):
+class SkipTrackAPIView(SkipTrackMixin,
+                       generics.RetrieveAPIView):
+    serializer_class = TrackSerializer
 
-    def retrieve(self, request, *args, **kwargs):
-        track = Track.ordered_qs().first()
-
-        if not track:
-            # select a track at random
-            last = Track.objects.filter(now_playing=False).count() - 1
-            if last >= 0:
-                index = randint(0, last)
-                try:
-                    track = Track.objects.filter(now_playing=False)[index]
-                except IndexError:
-                    # on the very unlikely event of selecting an index that
-                    # disappeared between the two queries we try selecting the
-                    # first one.
-                    track = Track.objects.filter(now_playing=False).first()
-
-        if track:
-            data = TrackSerializer(track).data
-        else:
-            data = None
-
-        return Response({'next': data})
+    def post(self, request, *args, **kwargs):
+        self.skip()
+        return Response(status=status.HTTP_200_OK)

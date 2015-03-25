@@ -30,7 +30,7 @@
       };
 
       var voteSkip = function() {
-        $http.post(API_URL + '/tracks/now-playing/skip/');
+        $http.post(API_URL + '/tracks/now-playing/voteskip/');
       };
 
       return {

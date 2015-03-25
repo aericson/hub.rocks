@@ -1,10 +1,10 @@
 (function () {
   var HubrocksAPI = (function () {
-    var getNext = function () {
-      console.log("getNext");
+    var skipTrack = function () {
+      console.log("SkipTrack");
       return $.ajax({
-        url: API_URL + '/tracks/next/',
-        type: 'GET'
+        url: API_URL + '/tracks/now-playing/skip/',
+        type: 'POST'
       });
     };
 
@@ -16,20 +16,8 @@
       });
     };
 
-    var setNowPlaying = function (service_id) {
-      console.log("setNowPlaying");
-      return $.ajax({
-        url: API_URL + '/tracks/now-playing/',
-        type: 'PUT',
-        data: {
-          'service_id': service_id,
-          'now_playing': true
-        }
-      });
-    };
-
-    var deleteNowPlaying = function (service_id) {
-      console.log("deleteNowPlaying");
+    var deleteNowPlaying = function () {
+      console.log("deleteNowPlayingInner");
       return $.ajax({
         url: API_URL + '/tracks/now-playing/',
         type: 'DELETE'
@@ -37,30 +25,43 @@
     };
 
     return {
-      getNext: getNext,
+      skipTrack: skipTrack,
       getNowPlaying: getNowPlaying,
-      setNowPlaying: setNowPlaying,
       deleteNowPlaying: deleteNowPlaying
     };
   }());
 
   var popNextAndPlay = function () {
-    console.log("popNextAndPlay");
-    HubrocksAPI.getNext().done(function (json) {
-      if (json.next) {
-        HubrocksAPI.setNowPlaying(json.next.service_id);
 
-        DZ.player.playTracks([json.next.service_id]);
-      } else {
-        console.log('no next, will try again...');
-        fail();
+   console.log("popNextAndPlay");
+    HubrocksAPI.skipTrack().done(function () {
+      tryNowPlaying();
+    }).fail(getFailFunction(popNextAndPlay));
+
+
+    function tryNowPlaying() {
+      HubrocksAPI.getNowPlaying().done(function (now_playing) {
+        DZ.player.playTracks([now_playing.service_id]);
+      }).fail(function (error) {
+        if (error.status === 404){
+          // no track to play next try popping again
+          console.log('no next, will try again...');
+          getFailFunction(popNextAndPlay)();
+        } else {
+          // something went wrong with nowPlaying try it again
+          console.log(error);
+          getFailFunction(tryNowPlaying)();
+        }
+      });
+    }
+
+    function getFailFunction(func) {
+      function fail() {
+        setTimeout(function () {
+          func();
+        }, 3000);
       }
-    }).fail(fail);
-
-    function fail() {
-      setTimeout(function () {
-        popNextAndPlay();
-      }, 3000);
+      return fail;
     }
   };
 
@@ -73,9 +74,9 @@
     });
   };
 
-  var deleteNowPlaying = function (track_id) {
+  var deleteNowPlaying = function () {
     console.log("deleteNowPlaying");
-    return HubrocksAPI.deleteNowPlaying(track_id);
+    return HubrocksAPI.deleteNowPlaying();
   };
 
   swampdragon.ready(function () {
@@ -84,7 +85,10 @@
       if (channels.indexOf('skip') > -1) {
         if (message.action === 'updated' && message.data._type === 'track' && message.data.now_playing === false) {
           var track = DZ.player.getCurrentTrack();
-          if (track.id === message.data.service_id) {
+          if (track && track.id === message.data.service_id) {
+            console.log('skip request');
+            // This is either already paused or a bad song, pause it!
+            DZ.player.pause();
             popNextAndPlay();
           }
         }
@@ -112,9 +116,7 @@
             tryToContinuePlaying();
 
             DZ.Event.subscribe('track_end', function (currentIndex) {
-              var track = DZ.player.getCurrentTrack();
-              
-              deleteNowPlaying(track.id);
+              deleteNowPlaying();
             });
           }
       }
