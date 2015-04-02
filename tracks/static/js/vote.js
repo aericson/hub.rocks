@@ -88,7 +88,7 @@
           });
         } else if (indexOf.call(channels, 'playing-now') > -1) {
           $scope.$apply(function() {
-            if (message.data._type === 'vote') {
+            if (message.data._type === 'vote' && message.action === 'updated') {
               // Need to populate fields of track again
               getSingleNowPlaying();
             }
