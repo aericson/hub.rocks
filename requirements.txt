@@ -1,9 +1,7 @@
 boto==2.36.0
-Collectfast==0.2.1
 dj-database-url==0.3.0
-Django==1.7.7
+Django==1.8
 django-appconf==1.0.1
-django-bower==5.0.2
 django-braces==1.4.0
 django-compressor==1.4
 django-fanout==1.1.0
@@ -26,3 +24,5 @@ requests==2.5.1
 responses==0.3.0
 six==1.9.0
 git+https://github.com/vintasoftware/django-naomi.git@fix-webbrowser-open
+git+https://github.com/yprez/django-bower.git@cbb31bd9400f75c3b57f7578100aaa8b202bfa81
+git+https://github.com/aericson/collectfast.git@django-18
